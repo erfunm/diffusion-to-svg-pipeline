@@ -1,0 +1,35 @@
+# ================================
+# Drawing with LLMs: local pipeline
+# ================================
+diffusion:
+  model_id: stabilityai/sd-turbo
+  dtype: auto
+  height: 512
+  width: 512
+  steps: 4
+  guidance: 0.0
+  batch_size: 1
+  seed: 42
+  use_xformers: true
+
+data:
+  prompts_file: prompts/prompts.txt
+
+paths:
+  images_dir: outputs/images
+  svg_dir: outputs/svg
+
+vectorize:
+  canny_low: 80
+  canny_high: 160
+  min_area: 150
+  approx_epsilon: 2.0
+  max_paths: 128
+  canvas_size: [512, 512]
+  use_fill: true
+  use_stroke: false
+  allowed_elements: ["path"]
+
+submission:
+  make_csv: false
+  csv_path: outputs/submission.csv

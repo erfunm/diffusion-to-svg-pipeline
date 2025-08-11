@@ -1,0 +1,12 @@
+# Kaggle Package & local pipeline deps (install torch separately to match CUDA)
+diffusers>=0.27.0
+transformers>=4.43.0
+accelerate>=0.31.0
+safetensors>=0.4.2
+pillow>=10.3.0
+numpy>=1.26.0
+opencv-python>=4.9.0
+svgwrite>=1.4.3
+pyyaml>=6.0.1
+# optional for local validation/preview
+cairosvg>=2.7.1
