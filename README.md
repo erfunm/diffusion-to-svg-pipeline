@@ -91,8 +91,6 @@ See comments in the file for each field. Tweak diffusion model/steps and vectori
 ## Colab
 Use the badge above (update `<YOUR_USER>/<YOUR_REPO>` after pushing). The notebook runs the local pipeline with the YAML config.
 
-## License
-Add a license (MIT or Apache-2.0 recommended) before publishing.
 
 ---
 **Next steps I can do for you**  
