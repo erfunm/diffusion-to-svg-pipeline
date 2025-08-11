@@ -88,10 +88,6 @@ This implementation keeps things **valid, small, and fast**:
 
 See comments in the file for each field. Tweak diffusion model/steps and vectorization thresholds to trade detail vs. simplicity.
 
-## Colab
-Use the badge above (update `<YOUR_USER>/<YOUR_REPO>` after pushing). The notebook runs the local pipeline with the YAML config.
-
-
 ---
 **Next steps I can do for you**  
 - Add a strict allowlist closer to the official `svg_constraints` package.  
