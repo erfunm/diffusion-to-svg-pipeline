@@ -1,0 +1,7 @@
+# CPU-only test/lint deps (CI installs CPU torch separately)
+numpy>=1.26.0
+opencv-python-headless>=4.9.0
+pyyaml>=6.0.1
+pillow>=10.3.0
+pytest>=8.0
+ruff>=0.5
