@@ -1,4 +1,5 @@
 import re
+import xml.etree.ElementTree as ET
 from html import escape
 
 # A conservative allowlist aligned with competition spirit (paths only).
@@ -60,3 +61,34 @@ def sanitize_svg(svg: str, width: int = 512, height: int = 512) -> str:
                 break
         out = f"<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"{width}\" height=\"{height}\" viewBox=\"{view_box}\">{''.join(keep)}</svg>"
     return out
+
+SVG_NS = "{http://www.w3.org/2000/svg}"
+
+def validate_svg(svg: str) -> list[str]:
+    """Independent check of a final SVG against the constraints. Returns a list of
+    violations (empty list == valid): size <= MAX_BYTES, parseable XML, svg root,
+    and only ALLOWED_TAGS / ALLOWED_ATTRS. Does not modify anything.
+    """
+    problems = []
+    size = len(svg.encode("utf-8"))
+    if size > MAX_BYTES:
+        problems.append(f"size {size} > {MAX_BYTES} bytes")
+    try:
+        root = ET.fromstring(svg)
+    except ET.ParseError as e:
+        return problems + [f"not well-formed XML: {e}"]
+    for el in root.iter():
+        if not el.tag.startswith(SVG_NS):
+            problems.append(f"element outside SVG namespace: {el.tag}")
+            continue
+        tag = el.tag[len(SVG_NS):]
+        if tag not in ALLOWED_TAGS:
+            problems.append(f"disallowed tag <{tag}>")
+            continue
+        allowed = ALLOWED_ATTRS.get(tag, set())
+        for attr in el.attrib:
+            if attr not in allowed:
+                problems.append(f"disallowed attribute {attr!r} on <{tag}>")
+    if root.tag != SVG_NS + "svg":
+        problems.append(f"root element is {root.tag}, expected svg")
+    return problems

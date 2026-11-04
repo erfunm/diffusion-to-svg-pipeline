@@ -3,14 +3,20 @@
 # ================================
 diffusion:
   model_id: stabilityai/sd-turbo
-  dtype: auto
+  dtype: fp16               # auto | fp16 | bf16 | fp32 (half precision falls back to fp32 on CPU)
   height: 512
   width: 512
   steps: 4
   guidance: 0.0
-  batch_size: 1
-  seed: 42
-  use_xformers: true
+  batch_size: 1              # prompts per pipeline call, per GPU
+  seed: 42                   # prompt i always uses seed + i, regardless of which GPU runs it
+  num_gpus: auto             # auto = all visible GPUs; 0 = CPU; capped at what is available
+  use_xformers: true         # xFormers memory-efficient attention (skipped cleanly if unavailable)
+  attention_slicing: true    # replaced by xFormers when that is active; acts as the fallback otherwise
+
+runtime:
+  time_budget_s: 300         # per-prompt generation budget; on timeout the heuristic renderer is used
+  cpu_workers: 2             # processes for OpenCV vectorisation + sanitisation
 
 data:
   prompts_file: prompts/prompts.txt
@@ -28,7 +34,6 @@ vectorize:
   canvas_size: [512, 512]
   use_fill: true
   use_stroke: false
-  allowed_elements: ["path"]
 
 submission:
   make_csv: false

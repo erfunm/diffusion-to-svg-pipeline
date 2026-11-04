@@ -1,5 +1,5 @@
-import os, math, re
-from typing import Any
+import os, math, threading
+from .budget import DEFAULT_BUDGET_S, call_with_budget
 from .svg_sanitizer import sanitize_svg
 
 class Model:
@@ -8,12 +8,17 @@ class Model:
     This implementation:
     - Uses lightweight heuristics to compose shapes from keywords (fast, deterministic).
     - Optionally, if DIFFUSION_TO_SVG=1, will try a raster->vector pipeline (for local use only).
+      That path is bounded by a per-prompt time budget (config `time_budget_s`, env
+      SVG_TIME_BUDGET_S, default 300s) and falls back to the heuristic renderer on timeout.
     """
 
     def __init__(self, config: dict | None = None):
         self.width = (config or {}).get("width", 512)
         self.height = (config or {}).get("height", 512)
         self.diffusion_enabled = os.getenv("DIFFUSION_TO_SVG", "0") == "1"
+        self.time_budget_s = float((config or {}).get("time_budget_s", os.getenv("SVG_TIME_BUDGET_S", DEFAULT_BUDGET_S)))
+        self._pipe = None
+        self._pipe_lock = threading.Lock()  # a timed-out call may still be using the pipeline
 
     # --- Simple heuristic renderer (keyword → shapes) ---
     def _heuristic_svg(self, prompt: str) -> str:
@@ -67,14 +72,15 @@ class Model:
 
     # --- Optional heavier pipeline (local) ---
     def _diffusion_to_svg(self, prompt: str) -> str:
-        from PIL import Image
-        import numpy as np, cv2, svgwrite, torch
+        import numpy as np, cv2, torch
         from diffusers import AutoPipelineForText2Image
-        # 1) raster
-        pipe = AutoPipelineForText2Image.from_pretrained("stabilityai/sd-turbo", torch_dtype=torch.float16 if torch.cuda.is_available() else torch.float32)
-        if torch.cuda.is_available(): pipe = pipe.to("cuda")
-        with torch.autocast("cuda", enabled=torch.cuda.is_available()):
-            out = pipe(prompt, num_inference_steps=4, guidance_scale=0.0, height=self.height, width=self.width)
+        # 1) raster (pipeline loaded once and reused across prompts)
+        with self._pipe_lock:
+            if self._pipe is None:
+                pipe = AutoPipelineForText2Image.from_pretrained("stabilityai/sd-turbo", torch_dtype=torch.float16 if torch.cuda.is_available() else torch.float32)
+                if torch.cuda.is_available(): pipe = pipe.to("cuda")
+                self._pipe = pipe
+            out = self._pipe(prompt, num_inference_steps=4, guidance_scale=0.0, height=self.height, width=self.width)
         img = out.images[0]
         # 2) vectorize (very light)
         img_bgr = cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR)
@@ -95,7 +101,9 @@ class Model:
     def predict(self, prompt: str) -> str:
         if self.diffusion_enabled:
             try:
-                return self._diffusion_to_svg(prompt)
+                svg, _ = call_with_budget(lambda: self._diffusion_to_svg(prompt), self.time_budget_s,
+                                          fallback=lambda: self._heuristic_svg(prompt), label=f"prompt {prompt[:40]!r}")
+                return svg
             except Exception:
                 # Fallback to heuristic
                 return self._heuristic_svg(prompt)
