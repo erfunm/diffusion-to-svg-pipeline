@@ -78,28 +78,19 @@ xFormers and attention slicing are **not stacked**: in diffusers each replaces t
 
 **Evaluation pipeline (what matters).** SVG is rendered to PNG with **cairosvg**, then scored with VQA (PaliGemma, **TIFA**) for faithfulness, an OCR penalty for text, and a **CLIP aesthetic** score. The final score is a **harmonic mean** that weights VQA most heavily. In practice this means: prioritise **composition** and **object correctness** over ornate textures, and avoid unintended **text-like artifacts**.
 
-## Performance
+## Benchmarking
 
-All numbers in this section must come from `reports/benchmark.csv`, produced by `python -m src.benchmark` on Kaggle **GPU T4 x2** (`notebooks/kaggle_dual_t4.ipynb`). The setup is 32 prompts from `prompts/benchmark_prompts.txt`, 512×512, 4 steps, batch size 1, with a warm-up excluded from timings.
+`python -m src.benchmark` (or `notebooks/kaggle_dual_t4.ipynb` on Kaggle **GPU T4 x2**) compares single vs dual GPU, FP32 vs FP16, and xFormers / attention slicing on/off, using the same 32 prompts (`prompts/benchmark_prompts.txt`) and per-prompt seeds for every configuration. A warm-up call per GPU is excluded from the timings.
 
-| Config | GPUs | dtype | Attention processor | Images/s | s/prompt p50 | s/prompt p95 | Peak mem GPU0 (MB) | Peak mem GPU1 (MB) | Util GPU0 / GPU1 (%) | SVG pass rate |
-|---|---|---|---|---|---|---|---|---|---|---|
-| 1gpu_fp32 | 1 | fp32 | [TO BE FILLED FROM KAGGLE RUN] | [TO BE FILLED FROM KAGGLE RUN] | [TO BE FILLED FROM KAGGLE RUN] | [TO BE FILLED FROM KAGGLE RUN] | [TO BE FILLED FROM KAGGLE RUN] | – | [TO BE FILLED FROM KAGGLE RUN] | [TO BE FILLED FROM KAGGLE RUN] |
-| 1gpu_fp16 | 1 | fp16 | [TO BE FILLED FROM KAGGLE RUN] | [TO BE FILLED FROM KAGGLE RUN] | [TO BE FILLED FROM KAGGLE RUN] | [TO BE FILLED FROM KAGGLE RUN] | [TO BE FILLED FROM KAGGLE RUN] | – | [TO BE FILLED FROM KAGGLE RUN] | [TO BE FILLED FROM KAGGLE RUN] |
-| 1gpu_fp16_slicing | 1 | fp16 | [TO BE FILLED FROM KAGGLE RUN] | [TO BE FILLED FROM KAGGLE RUN] | [TO BE FILLED FROM KAGGLE RUN] | [TO BE FILLED FROM KAGGLE RUN] | [TO BE FILLED FROM KAGGLE RUN] | – | [TO BE FILLED FROM KAGGLE RUN] | [TO BE FILLED FROM KAGGLE RUN] |
-| 1gpu_fp16_xformers | 1 | fp16 | [TO BE FILLED FROM KAGGLE RUN] | [TO BE FILLED FROM KAGGLE RUN] | [TO BE FILLED FROM KAGGLE RUN] | [TO BE FILLED FROM KAGGLE RUN] | [TO BE FILLED FROM KAGGLE RUN] | – | [TO BE FILLED FROM KAGGLE RUN] | [TO BE FILLED FROM KAGGLE RUN] |
-| 1gpu_fp16_xformers_slicing | 1 | fp16 | [TO BE FILLED FROM KAGGLE RUN] | [TO BE FILLED FROM KAGGLE RUN] | [TO BE FILLED FROM KAGGLE RUN] | [TO BE FILLED FROM KAGGLE RUN] | [TO BE FILLED FROM KAGGLE RUN] | – | [TO BE FILLED FROM KAGGLE RUN] | [TO BE FILLED FROM KAGGLE RUN] |
-| 2gpu_fp16 | 2 | fp16 | [TO BE FILLED FROM KAGGLE RUN] | [TO BE FILLED FROM KAGGLE RUN] | [TO BE FILLED FROM KAGGLE RUN] | [TO BE FILLED FROM KAGGLE RUN] | [TO BE FILLED FROM KAGGLE RUN] | [TO BE FILLED FROM KAGGLE RUN] | [TO BE FILLED FROM KAGGLE RUN] | [TO BE FILLED FROM KAGGLE RUN] |
-| 2gpu_fp16_xformers | 2 | fp16 | [TO BE FILLED FROM KAGGLE RUN] | [TO BE FILLED FROM KAGGLE RUN] | [TO BE FILLED FROM KAGGLE RUN] | [TO BE FILLED FROM KAGGLE RUN] | [TO BE FILLED FROM KAGGLE RUN] | [TO BE FILLED FROM KAGGLE RUN] | [TO BE FILLED FROM KAGGLE RUN] | [TO BE FILLED FROM KAGGLE RUN] |
-
-Column definitions (all from `reports/benchmark.csv`):
+It records, per configuration:
 - **Images/s**: prompts ÷ wall time from the synchronised start until the last image is generated.
-- **s/prompt**: generation time (per batch ÷ batch size) plus CPU vectorisation time.
-- **Peak mem**: `torch.cuda.max_memory_allocated` per device, reset after warm-up.
-- **Util**: mean NVML utilisation during the timed window.
-- **SVG pass rate**: the share of diffusion-derived SVGs that pass `validate_svg` (≤10 KB, allowlist) without needing the fallback. `raw_under_10kb_rate` in the CSV shows how often the size cap was reached before sanitisation.
+- **Seconds per prompt (p50 / p95)**: generation time (per batch ÷ batch size) plus CPU vectorisation time.
+- **Peak GPU memory per device**: `torch.cuda.max_memory_allocated`, reset after warm-up.
+- **GPU utilisation per device**: mean NVML utilisation during the timed window.
+- **SVG pass rate**: the share of diffusion-derived SVGs that pass `validate_svg` (≤10 KB, allowlist) without needing the fallback.
+- **Active settings**: the dtype and attention processor actually in use, so a requested xFormers run that fell back is visible.
 
-Evidence that both GPUs were used: `reports/nvidia_smi_dual.txt`. Chart: `reports/figures/benchmark.png`.
+Outputs: `reports/benchmark.csv`, `reports/figures/benchmark.png`, and `reports/nvidia_smi_dual.txt` (nvidia-smi snapshots taken during the dual-GPU run).
 
 ## Kaggle Package (Submission) – `kaggle_pkg`
 

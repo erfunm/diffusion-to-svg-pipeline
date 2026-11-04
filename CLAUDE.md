@@ -38,4 +38,4 @@ Ruff rules are pinned in `pyproject.toml` (E4/E7/E9/F, with the one-liner style 
 
 ## Benchmark honesty
 
-`reports/benchmark.csv` is the only allowed source for performance numbers in the README. The README's Performance table holds `[TO BE FILLED FROM KAGGLE RUN]` placeholders until a real Kaggle T4 x2 run has produced the CSV. Never invent or estimate values.
+Any performance numbers added to the README must come from a real `reports/benchmark.csv` run. Never invent or estimate values.
